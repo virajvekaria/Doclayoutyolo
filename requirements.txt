@@ -1,0 +1,22 @@
+# Core dependencies for DocLayout-YOLO Layout Detection Pipeline
+
+# Computer Vision and Deep Learning
+torch>=1.9.0
+torchvision>=0.10.0
+opencv-python>=4.5.0
+pillow>=8.0.0
+numpy>=1.21.0
+
+# YOLO Models (choose one)
+# Option 1: DocLayout-YOLO (recommended)
+# doclayout-yolo  # Install from: pip install doclayout-yolo
+
+# Option 2: Ultralytics YOLO (fallback)
+ultralytics>=8.0.0
+
+# PDF Processing
+PyMuPDF>=1.20.0  # For PDF to image conversion
+
+# Optional: For better performance
+# torch-audio  # If using CUDA
+# torchtext    # If needed for text processing

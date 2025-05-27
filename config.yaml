@@ -1,0 +1,52 @@
+# Configuration file for DocLayout-YOLO Layout Detection Pipeline
+
+# Model Configuration
+model:
+  # Path to the DocLayout-YOLO model file
+  # Download from: https://huggingface.co/opendatalab/PDF-Extract-Kit-1.0/blob/main/models/Layout/YOLO/doclayout_yolo_ft.pt
+  model_path: "models/doclayout_yolo_ft.pt"
+  
+  # Device to run inference on ('cpu', 'cuda', 'cuda:0', etc.)
+  device: "cpu"
+  
+  # Model input image size
+  img_size: 1024
+  
+  # Confidence threshold for detections (0.0 - 1.0)
+  conf_thres: 0.25
+  
+  # IoU threshold for Non-Maximum Suppression (0.0 - 1.0)
+  iou_thres: 0.45
+
+# Input/Output Configuration
+paths:
+  # Input path - can be:
+  # - Single image file: "path/to/image.jpg"
+  # - Single PDF file: "path/to/document.pdf"
+  # - Directory with images/PDFs: "path/to/input_folder"
+  input: "input"
+  
+  # Output directory for results
+  output: "output"
+
+# Visualization Configuration
+visualization:
+  # Whether to save visualization images
+  enabled: true
+  
+  # Transparency for overlay (0.0 - 1.0)
+  alpha: 0.3
+
+# Layout Element Classes
+# These are the classes that the model can detect:
+classes:
+  0: "title"
+  1: "plain text"
+  2: "abandon"
+  3: "figure"
+  4: "figure_caption"
+  5: "table"
+  6: "table_caption"
+  7: "table_footnote"
+  8: "isolate_formula"
+  9: "formula_caption"
