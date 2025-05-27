@@ -43,7 +43,7 @@ The model can detect the following layout elements:
    ```bash
    pip install doclayout-yolo
    ```
-   
+
    Or use ultralytics as fallback:
    ```bash
    pip install ultralytics
@@ -52,7 +52,7 @@ The model can detect the following layout elements:
 4. **Download the model**:
    Download the DocLayout-YOLO model from:
    [https://huggingface.co/opendatalab/PDF-Extract-Kit-1.0/blob/main/models/Layout/YOLO/doclayout_yolo_ft.pt](https://huggingface.co/opendatalab/PDF-Extract-Kit-1.0/blob/main/models/Layout/YOLO/doclayout_yolo_ft.pt)
-   
+
    Place it in a `models/` directory or update the path in `config.yaml`.
 
 ## Usage
@@ -81,6 +81,18 @@ python run_detection.py --device cuda
 
 # Use custom config file
 python run_detection.py --config my_config.yaml
+
+# Specify JSON output format
+python run_detection.py --format simple
+python run_detection.py --format coco
+
+# Process specific pages from PDF
+python run_detection.py --input document.pdf --pages "1,3,5"
+python run_detection.py --input document.pdf --pages "1-5"
+python run_detection.py --input document.pdf --pages "1,3-7,10"
+
+# Get PDF information
+python run_detection.py --input document.pdf --info
 ```
 
 ### Programmatic Usage
@@ -101,12 +113,26 @@ detector = LayoutDetector(
 # Process input (image, PDF, or directory)
 results = detector.predict("input_path", "output_directory")
 
+# Process specific pages from PDF
+results = detector.predict("document.pdf", "output_directory", page_numbers=[1, 3, 5])
+
+# Get PDF information
+pdf_info = detector.get_pdf_info("document.pdf")
+print(f"PDF has {pdf_info['total_pages']} pages")
+
+# Save results in different formats
+detector.save_results_json(results, "output_directory", "detailed")
+detector.save_results_json(results, "output_directory", "simple")
+detector.save_results_json(results, "output_directory", "coco")
+
 # Access results
 for result in results:
     print(f"Image: {result['image_id']}")
-    print(f"Detected elements: {len(result['boxes'])}")
-    for i, class_name in enumerate(result['class_names']):
-        print(f"  - {class_name}: {result['scores'][i]:.3f}")
+    print(f"Detected elements: {len(result['detections'])}")
+    for detection in result['detections']:
+        bbox = detection['bbox']
+        print(f"  - {detection['class_name']}: {detection['confidence']:.3f}")
+        print(f"    Box: [{bbox['x1']:.0f}, {bbox['y1']:.0f}, {bbox['x2']:.0f}, {bbox['y2']:.0f}]")
 ```
 
 ## Input Formats
@@ -117,36 +143,179 @@ The pipeline supports various input formats:
 - **Single PDF**: `document.pdf`
 - **Directory**: Folder containing images and/or PDFs
 
+## Page Selection for PDFs
+
+The pipeline supports processing specific pages from PDF files, which is useful for:
+- **Targeted Analysis**: Process only pages of interest
+- **Performance**: Faster processing and reduced storage
+- **Testing**: Quick validation on specific pages
+
+### Page Selection Syntax
+
+```bash
+# Single page
+--pages "1"
+
+# Multiple specific pages
+--pages "1,3,5"
+
+# Page range
+--pages "1-5"          # Pages 1, 2, 3, 4, 5
+
+# Mixed selection
+--pages "1,3-7,10"     # Pages 1, 3, 4, 5, 6, 7, 10
+```
+
+### PDF Information
+
+Get PDF information before processing:
+
+```bash
+python run_detection.py --input document.pdf --info
+```
+
+Output:
+```
+PDF Information:
+  File: document.pdf
+  Total pages: 15
+  Available pages: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+```
+
+### Page Selection Examples
+
+```bash
+# Process first page only
+python run_detection.py --input document.pdf --pages "1"
+
+# Process first 5 pages
+python run_detection.py --input document.pdf --pages "1-5"
+
+# Process specific pages with custom output
+python run_detection.py --input document.pdf --pages "1,5,10" --output results_selected
+
+# Process page range with GPU
+python run_detection.py --input document.pdf --pages "10-15" --device cuda
+```
+
+### Programmatic Page Selection
+
+```python
+# Get PDF information
+pdf_info = detector.get_pdf_info("document.pdf")
+print(f"Total pages: {pdf_info['total_pages']}")
+
+# Process specific pages
+results = detector.predict("document.pdf", "output", page_numbers=[1, 3, 5])
+
+# Process page range
+page_range = list(range(1, 6))  # Pages 1-5
+results = detector.predict("document.pdf", "output", page_numbers=page_range)
+
+# Process last page
+last_page = pdf_info['total_pages']
+results = detector.predict("document.pdf", "output", page_numbers=[last_page])
+```
+
 ## Output
 
 The pipeline generates:
 
 1. **Visualization Images**: Annotated images showing detected layout elements (if enabled)
-2. **JSON Results**: Detailed detection results including bounding boxes, classes, and confidence scores
+2. **JSON Results**: Multiple JSON formats with detailed detection results
 3. **Console Output**: Summary of detections
 
 ### Output Structure
 
 ```
 output_directory/
-├── detection_results.json          # Detailed results in JSON format
-├── image1_layout.png              # Visualized results (if enabled)
+├── detection_results_detailed.json    # Comprehensive results with metadata
+├── detection_results_simple.json      # Clean, minimal format
+├── detection_results_coco.json        # COCO-style format (optional)
+├── image1_layout.png                  # Visualized results (if enabled)
 ├── image2_layout.png
 └── ...
 ```
 
-### JSON Results Format
+### JSON Output Formats
+
+#### 1. Detailed Format (default)
+Comprehensive format with all available information:
+
+```json
+{
+  "metadata": {
+    "model_info": {
+      "model_path": "models/doclayout_yolo_ft.pt",
+      "device": "cpu",
+      "confidence_threshold": 0.25,
+      "iou_threshold": 0.45,
+      "image_size": 1024
+    },
+    "class_mapping": {"0": "title", "1": "plain text", ...},
+    "total_images": 1,
+    "total_detections": 5
+  },
+  "results": [
+    {
+      "image_id": "document_page_0001",
+      "image_info": {
+        "source": "document.pdf",
+        "total_detections": 5
+      },
+      "detections": [
+        {
+          "bbox": {
+            "x1": 100.0, "y1": 50.0, "x2": 300.0, "y2": 150.0,
+            "width": 200.0, "height": 100.0, "area": 20000.0
+          },
+          "class_id": 0,
+          "class_name": "title",
+          "confidence": 0.95
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### 2. Simple Format
+Clean, minimal format for easy integration:
 
 ```json
 [
   {
     "image_id": "document_page_0001",
-    "boxes": [[x1, y1, x2, y2], ...],
-    "classes": [0, 1, 3, ...],
-    "scores": [0.95, 0.87, 0.92, ...],
-    "class_names": ["title", "plain text", "figure", ...]
+    "detections": [
+      {
+        "bbox": [100.0, 50.0, 300.0, 150.0],
+        "class": "title",
+        "confidence": 0.95
+      }
+    ]
   }
 ]
+```
+
+#### 3. COCO Format
+Standard computer vision format:
+
+```json
+{
+  "images": [
+    {"id": 1, "file_name": "document_page_0001", "width": 0, "height": 0}
+  ],
+  "annotations": [
+    {
+      "id": 1, "image_id": 1, "category_id": 0,
+      "bbox": [100.0, 50.0, 200.0, 100.0],
+      "area": 20000.0, "iscrowd": 0, "score": 0.95
+    }
+  ],
+  "categories": [
+    {"id": 0, "name": "title", "supercategory": "layout_element"}
+  ]
+}
 ```
 
 ## Configuration
